@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Multi-clínica: Clinic é o "tenant". Todo dado clínico e financeiro carrega clinicId, e o app só acessa
+// o banco por um cliente já filtrado pela clínica do usuário (src/lib/tenant.ts).
+// SQLite não tem enum nativo: valores permitidos ficam em src/lib/*.ts.
+
+model Clinic {
+  id                  String           @id @default(cuid())
+  name                String
+  specialty           String           @default("FISIOTERAPIA") // FISIOTERAPIA | NUTRICAO | PSICOLOGIA
+  document            String? // CPF/CNPJ (só dígitos), exigido pela Asaas
+  email               String?
+  phone               String?
+  plan                String           @default("NONE") // chave em src/lib/plans.ts
+  subscriptionStatus  String           @default("NONE") // NONE | TRIAL | TRIAL_ENDED | PENDING | ACTIVE | OVERDUE | CANCELED
+  billingType         String? // PIX | BOLETO | UNDEFINED (o cliente escolhe na fatura)
+  asaasCustomerId     String?          @unique
+  asaasSubscriptionId String?          @unique
+  trialEndsAt         DateTime?
+  currentPeriodEnd    DateTime?
+  canceledAt          DateTime?
+  createdAt           DateTime         @default(now())
+  users               User[]
+  patients            Patient[]
+  appointments        Appointment[]
+  evolutions          Evolution[]
+  admissions          Admission[]
+  patientPayments     Payment[]
+  payments            BillingPayment[]
+}
+
+model User {
+  id              String        @id @default(cuid())
+  clinicId        String
+  clinic          Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name            String
+  email           String        @unique // login: único na plataforma inteira
+  passwordHash    String
+  role            String        @default("PROFISSIONAL") // ADMIN | PROFISSIONAL
+  registration    String? // registro no conselho (CREFITO, CRN, CRP)
+  active          Boolean       @default(true)
+  termsAcceptedAt DateTime?
+  createdAt       DateTime      @default(now())
+  appointments    Appointment[]
+  evolutions      Evolution[]
+  admissions      Admission[]
+  @@index([clinicId])
+}
+
+model Patient {
+  id             String        @id @default(cuid())
+  clinicId       String
+  clinic         Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name           String // nome completo
+  cpf            String // somente dígitos; único dentro da clínica
+  birthDate      DateTime
+  sex            String? // F | M | O
+  phone          String // somente dígitos, com DDD
+  email          String?
+  zipCode        String?
+  street         String?
+  number         String?
+  complement     String?
+  district       String?
+  city           String?
+  state          String?
+  emergencyName  String?
+  emergencyPhone String?
+  payerType      String        @default("PARTICULAR") // PARTICULAR | PLANO_SAUDE | PARCERIA
+  insurerName    String? // operadora (só PLANO_SAUDE)
+  insuranceCard  String? // nº da carteirinha
+  complaint      String? // espelho da admissão, usado nas listas
+  diagnosis      String?
+  therapy        String        @default("") // tipo principal de atendimento (chave em src/lib/specialties.ts)
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  admission      Admission?
+  appointments   Appointment[]
+  evolutions     Evolution[]
+  payments       Payment[]
+  @@unique([clinicId, cpf])
+  @@index([clinicId])
+}
+
+model Appointment {
+  id             String    @id @default(cuid())
+  clinicId       String
+  clinic         Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  startsAt       DateTime
+  durationMin    Int       @default(50)
+  therapy        String // tipo de atendimento (chave em src/lib/specialties.ts)
+  status         String    @default("AGENDADA") // AGENDADA | CONFIRMADA | REALIZADA | FALTOU | CANCELADA
+  notes          String?
+  professionalId String? // profissional que atende
+  professional   User?     @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  payments       Payment[]
+  evolution      Evolution?
+  @@index([startsAt])
+  @@index([clinicId, startsAt])
+}
+
+model Evolution {
+  id            String       @id @default(cuid())
+  clinicId      String
+  clinic        Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId     String
+  patient       Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentId String?      @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  date          DateTime     @default(now())
+  metric        Float? // dor (fisio), peso em kg (nutrição) ou bem-estar (psicologia)
+  techniques    String? // condutas / orientações / intervenções
+  content       String // evolução clínica
+  authorId      String? // quem registrou
+  author        User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  @@index([patientId, date])
+  @@index([clinicId])
+}
+
+model Admission {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId       String   @unique
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date            DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  answers         String // JSON com todas as respostas, conforme o formulário da especialidade
+  complaint       String // queixa, motivo ou demanda
+  assessment      String // diagnóstico (fisioterapêutico, nutricional) ou hipótese (psicologia)
+  goals           String
+  therapy         String
+  plannedSessions Int?
+  frequency       String?
+  metric          Float? // valor inicial da métrica de evolução
+  consent         Boolean  @default(false)
+  authorId        String? // quem fez a admissão
+  author          User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  @@index([clinicId])
+}
+
+model Payment {
+  id            String       @id @default(cuid())
+  clinicId      String
+  clinic        Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId     String
+  patient       Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  description   String
+  amount        Int // centavos
+  method        String? // PIX | DINHEIRO | CARTAO_CREDITO | CARTAO_DEBITO
+  status        String       @default("PENDENTE") // PENDENTE | PAGO
+  dueDate       DateTime
+  paidAt        DateTime?
+  @@index([status, dueDate])
+  @@index([clinicId])
+}
+
+// Cobrança da assinatura da clínica (Asaas).
+model BillingPayment {
+  id          String    @id @default(cuid())
+  asaasId     String    @unique
+  clinicId    String
+  clinic      Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  value       Int // centavos
+  status      String // PENDING | PAID | OVERDUE | REFUNDED | CANCELED
+  billingType String?
+  dueDate     DateTime
+  paidAt      DateTime?
+  invoiceUrl  String?
+  updatedAt   DateTime  @updatedAt
+  @@index([clinicId, dueDate])
+}
+
+model BillingEvent {
+  id           String   @id @default(cuid())
+  asaasEventId String   @unique
+  event        String
+  receivedAt   DateTime @default(now())
+}

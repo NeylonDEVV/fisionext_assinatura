@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-ink-50 text-ink-800 antialiased; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500; }
+}
+@layer components {
+  .card { @apply rounded-2xl bg-white shadow-soft ring-1 ring-ink-100; }
+  .input { @apply w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 active:scale-[.98]; }
+  .btn-ghost { @apply inline-flex items-center gap-2 rounded-xl bg-ink-100 px-3 py-2 text-sm font-medium text-ink-700 transition hover:bg-ink-200; }
+  .label { @apply mb-1.5 block text-xs font-medium text-ink-500; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+@keyframes stepIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+.step-in { animation: stepIn .35s cubic-bezier(.22, 1, .36, 1); }
+
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+@layer utilities { .font-display { font-family: var(--font-display), var(--font-jakarta), system-ui, sans-serif; } }

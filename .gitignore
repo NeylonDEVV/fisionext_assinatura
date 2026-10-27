@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.production
+*.db
+*.db-journal
+src/generated
+backups
+coverage
+playwright-report
+test-results

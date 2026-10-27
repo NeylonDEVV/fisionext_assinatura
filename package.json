@@ -1,0 +1,54 @@
+{
+  "name": "fisionext",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "setup": "prisma generate && prisma db push && prisma db seed",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:reset": "prisma generate && prisma db push --force-reset && prisma db seed",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "npm run typecheck && npm run test",
+    "admin:create": "tsx prisma/create-admin.ts",
+    "backup": "node scripts/backup.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.0.0",
+    "framer-motion": "^11.11.0",
+    "lucide-react": "^0.454.0",
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@prisma/adapter-better-sqlite3": "^7.0.0",
+    "better-sqlite3": "^12.0.0",
+    "dotenv": "^16.4.5",
+    "jose": "^5.9.6",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "prisma": "^7.0.0",
+    "tailwindcss": "^3.4.14",
+    "tsx": "^4.19.0",
+    "typescript": "^5",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/bcryptjs": "^2.4.6",
+    "vitest": "^2.1.8",
+    "@playwright/test": "^1.48.0"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}
